@@ -76,8 +76,8 @@ input:focus { outline: 2px solid var(--tg-theme-button-color, #5288c1); }
 .status { font-size: 13px; min-height: 16px; display: none; }
 .status.err { color: var(--tg-theme-destructive-text-color, #e53935); }
 .status.ok { color: #4caf50; }
-.site-cal { padding-bottom: 4px; }
-.site-cal .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; align-items: center; }
+.site-cal { overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.site-cal .grid { display: grid; grid-template-columns: repeat(7, 118px); gap: 6px; align-items: center; justify-content: start; }
 .site-cal .wd { text-align: center; text-transform: uppercase; font: 500 10px "Heading", Arial, sans-serif; color: var(--tg-theme-text-color, #f5f5f5); padding: 4px 0; }
 .site-cal .tile { position: relative; aspect-ratio: 167 / 125; }
 .site-cal .tile .bg { position: absolute; inset: 0; background: url(/img/bg_tile.png) no-repeat 50% / 100% 100%; }
@@ -227,6 +227,8 @@ d.days.forEach(function(day, idx) {
     }
     grid.appendChild(t);
 });
+var now = grid.querySelector('.tile.available');
+if (now) { now.scrollIntoView({ inline: 'center', block: 'nearest' }); }
 }
 async function doAdd() {
 var email = document.getElementById('email').value.trim();
