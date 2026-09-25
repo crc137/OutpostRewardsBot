@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DL Outpost</title>
+<link rel="stylesheet" href="https://webappcontent.telegram.org/css/cafe.css?22">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #17212b); color: var(--tg-theme-text-color, #f5f5f5); }
+.wrap { max-width: 520px; margin: 0 auto; padding: 14px 14px 20px; }
+h1 { font-size: 19px; margin: 6px 2px 12px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab { flex: 1; padding: 10px 0; text-align: center; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--tg-theme-secondary-bg-color, #232e3c); color: var(--tg-theme-hint-color, #708499); }
+.tab.active { background: var(--tg-theme-button-color, #5288c1); color: var(--tg-theme-button-text-color, #ffffff); }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--tg-theme-secondary-bg-color, #232e3c); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.acc { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid rgba(128,128,128,.15); font-size: 15px; word-break: break-all; }
+.acc:last-child { border-bottom: none; }
+.del { border: none; background: none; color: var(--tg-theme-destructive-text-color, #e53935); cursor: pointer; flex-shrink: 0; padding: 4px; }
+.del svg { width: 20px; height: 20px; display: block; }
+.empty { color: var(--tg-theme-hint-color, #708499); text-align: center; padding: 18px 0; font-size: 14px; }
+input { width: 100%; padding: 12px; margin-bottom: 10px; border: none; border-radius: 10px; font-size: 15px; background: var(--tg-theme-bg-color, #0e1621); color: var(--tg-theme-text-color, #f5f5f5); outline: 1px solid rgba(128,128,128,.2); }
+input:focus { outline: 2px solid var(--tg-theme-button-color, #5288c1); }
+.status { font-size: 13px; min-height: 16px; }
+.status.err { color: var(--tg-theme-destructive-text-color, #e53935); }
+.status.ok { color: #4caf50; }
+.site-cal { overflow-x: auto; padding-bottom: 4px; }
+.site-cal .grid { display: grid; grid-template-columns: repeat(7, minmax(86px, 1fr)); gap: 8px; min-width: 640px; }
+.site-cal .wd { text-align: center; text-transform: uppercase; font: 600 9px Arial, sans-serif; color: var(--tg-theme-hint-color, #708499); padding: 3px 0; }
+.site-cal .tile { position: relative; aspect-ratio: 167 / 125; }
+.site-cal .tile:nth-child(7n+9) { margin-top: 3px; }
+.site-cal .tile:nth-child(7n+10) { margin-top: 6px; }
+.site-cal .tile:nth-child(7n+11) { margin-top: 9px; }
+.site-cal .tile:nth-child(7n+12) { margin-top: 12px; }
+.site-cal .tile:nth-child(7n+13) { margin-top: 15px; }
+.site-cal .tile:nth-child(7n+14) { margin-top: 18px; }
+.site-cal .tile .bg { position: absolute; inset: 0; background: url(/img/bg_tile.png) no-repeat 50% / 100% 100%; }
+.site-cal .tile .rw { position: absolute; inset: 0; }
+.site-cal .tile .date { position: absolute; left: 6px; top: 5px; text-align: center; }
+.site-cal .tile .date .day { font: 700 14px Arial, sans-serif; color: #f5ead7; text-shadow: 0 1px 2px #000; }
+.site-cal .tile .month { display: inline-block; background: #f5ead7; color: #050e14; font: 700 7px Arial, sans-serif; padding: 2px 4px 1px; margin-top: 2px; text-transform: uppercase; }
+.site-cal .tile .img { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 13px; }
+.site-cal .tile .img img { max-width: 84%; max-height: 80%; object-fit: contain; }
+.site-cal .tile .name { position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; }
+.site-cal .tile .name span { display: inline-block; max-width: 94%; background: url(/img/taped_smudge.png) no-repeat 50% / 100% 100%, #f5ead7; color: #050e14; font: 700 7px Arial, sans-serif; text-transform: uppercase; padding: 3px 6px 2px; }
+.site-cal .tile .rw.claimed:after { content: ' '; position: absolute; right: 5px; top: 5px; width: 15px; aspect-ratio: 1 / 1; background: url(/img/mega.svg#check) no-repeat 50% / 60% 70%, url(/img/taped_gold.jpg) no-repeat 50% / 100% 100%; pointer-events: none; border-radius: 100%; filter: drop-shadow(1px 1px 2px #0009); }
+.site-cal .tile .closed { position: absolute; inset: 0; }
+.site-cal .tile.locked { background: radial-gradient(circle at 50% 42%, #1b2129, #0b0e12); }
+.site-cal .tile .closed img { width: 100%; height: 100%; display: block; object-fit: fill; }
+.site-cal .tile .claimbtn { position: absolute; left: 50%; bottom: 15px; transform: translateX(-50%); background: #fa5400; color: #f5ead7; font: 700 7px Arial, sans-serif; text-transform: uppercase; padding: 3px 8px 2px; cursor: pointer; white-space: nowrap; }
+.legend { font-size: 11px; color: var(--tg-theme-hint-color, #708499); margin-top: 6px; }
+.legend svg { width: 12px; height: 12px; vertical-align: -2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>DL Outpost Rewards</h1>
+<div class="tabs">
+<div class="tab active" id="tabAccounts" onclick="showTab('accounts')">Accounts</div>
+<div class="tab" id="tabCalendar" onclick="clickCalendar()">Calendar</div>
+</div>
+<div class="view active" id="viewAccounts">
+<div class="card" id="list"><div class="empty">Loading...</div></div>
+<div class="card">
+<input id="email" type="email" placeholder="Outpost email" autocomplete="off">
+<input id="password" type="password" placeholder="Password" autocomplete="off">
+<div class="status" id="status"></div>
+</div>
+</div>
+<div class="view" id="viewCalendar">
+<div class="site-cal"><div class="grid" id="calGrid"></div></div>
+<div class="legend" id="legend"></div>
+</div>
+</div>
+<script>
+var tg = window.Telegram.WebApp;
+tg.ready();
+var initData = tg.initData || '';
+try { tg.MainButton.setText('Add account'); tg.MainButton.show(); tg.MainButton.onClick(doAdd); } catch (e) {}
+var XSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" transform="scale(1, -1) translate(0, -1024) scale(0.9, 0.9)" d="M738 798 q12 13 30 13 q18 0 30 -13 q13 -12 13 -30 q0 -18 -13 -30 l-226 -226 l226 -226 q13 -12 13 -30 q0 -18 -13 -30 q-12 -13 -30 -13 q-18 0 -30 13 l-226 226 l-226 -226 q-12 -13 -30 -13 q-18 0 -30 13 q-13 12 -13 30 q0 18 13 30 l226 226 l-226 226 q-13 12 -13 30 q0 18 13 30 q12 13 30 13 q18 0 30 -13 l226 -226 l226 226 l0 0 Z"></path></svg>';
+var LOCKSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" fill="none"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M10.3281 9.52747C10.3281 7.44029 11.9766 5.73992 14 5.73992C16.0234 5.73992 17.6719 7.44029 17.6719 9.52747V12.63C17.2734 12.622 16.8281 12.622 16.3125 12.622H11.6875C11.1719 12.622 10.7266 12.622 10.3281 12.63V9.52747ZM7.67188 13.178V9.52747C7.67188 5.92527 10.5078 3 14 3C17.4922 3 20.3281 5.92527 20.3281 9.52747V13.178C20.875 13.5326 21.3203 14.0322 21.6094 14.6286C22 15.4103 22 16.4337 22 18.4886V19.1333C22 21.1883 22 22.2117 21.6094 23.0015C21.2734 23.6864 20.7266 24.2505 20.0625 24.5971C19.2969 25 18.3047 25 16.3125 25H11.6875C9.69531 25 8.70312 25 7.9375 24.5971C7.27344 24.2505 6.72656 23.6864 6.39062 23.0015C6 22.2117 6 21.1883 6 19.1333V18.4886C6 16.4337 6 15.4103 6.39062 14.6286C6.67969 14.0322 7.125 13.5326 7.67188 13.178Z"></path></svg>';
+var WD = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+var CLOSED_IMG = '/img/reward_closed.png';
+var CLOSED_GOLD_IMG = '/img/reward_closed_gold.png';
+function setStatus(msg, cls) { var el = document.getElementById('status'); el.textContent = msg || ''; el.className = 'status ' + (cls || ''); }
+function showTab(name) {
+document.getElementById('viewAccounts').classList.toggle('active', name === 'accounts');
+document.getElementById('viewCalendar').classList.toggle('active', name === 'calendar');
+document.getElementById('tabAccounts').classList.toggle('active', name === 'accounts');
+document.getElementById('tabCalendar').classList.toggle('active', name === 'calendar');
+try { if (name === 'accounts') { tg.MainButton.show(); } else { tg.MainButton.hide(); } } catch (e) {}
+}
+function clickCalendar() { showTab('calendar'); loadCalendar(); }
+async function api(path, data) {
+var r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ init_data: initData }, data || {})) });
+return r.json();
+}
+async function load() {
+var box = document.getElementById('list');
+var d = await api('/api/accounts');
+if (!d.ok) { box.innerHTML = '<div class="empty">Auth failed. Open via Telegram.</div>'; return; }
+if (!d.accounts.length) { box.innerHTML = '<div class="empty">No accounts yet.<br>Add your first account below.</div>'; return; }
+box.innerHTML = '';
+d.accounts.forEach(function(a) {
+var row = document.createElement('div'); row.className = 'acc';
+var span = document.createElement('span'); span.textContent = a.email;
+var del = document.createElement('button'); del.className = 'del'; del.innerHTML = XSVG;
+del.onclick = async function() {
+var r = await api('/api/remove', { email: a.email });
+setStatus(r.ok ? 'Removed' : (r.error || 'Error'), r.ok ? 'ok' : 'err');
+load();
+};
+row.appendChild(span); row.appendChild(del); box.appendChild(row);
+});
+}
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+async function loadCalendar() {
+var grid = document.getElementById('calGrid');
+grid.innerHTML = '<div class="empty">Loading...</div>';
+var d = await api('/api/calendar');
+grid.innerHTML = '';
+if (!d.ok) { grid.innerHTML = '<div class="empty">' + (d.error || 'Error') + '</div>'; return; }
+var claimed = {};
+(d.claimed || []).forEach(function(n) { claimed[n] = 1; });
+WD.forEach(function(w) { grid.appendChild(el('div', 'wd', w)); });
+d.days.forEach(function(day) {
+var state = day.state === 'locked' ? 'locked' : (claimed[day.name.toLowerCase()] ? 'claimed' : day.state);
+var t = el('div', 'tile' + (state === 'available' ? ' available' : '') + (state === 'locked' ? ' locked' : ''));
+if (state !== 'locked') { t.appendChild(el('div', 'bg')); }
+if (state === 'locked') {
+var closed = el('div', 'closed');
+var img = document.createElement('img'); img.src = day.gold ? CLOSED_GOLD_IMG : CLOSED_IMG; img.alt = '';
+closed.appendChild(img); t.appendChild(closed);
+} else {
+var rw = el('div', 'rw' + (state === 'claimed' ? ' claimed' : ''));
+var date = el('div', 'date');
+date.appendChild(el('div', 'day', day.day));
+date.appendChild(el('div', 'month', day.month));
+var imgw = el('div', 'img');
+var img = document.createElement('img'); img.src = day.img; img.alt = day.name;
+imgw.appendChild(img);
+var nm = el('div', 'name');
+var sp = el('span', null, day.name);
+nm.appendChild(sp);
+rw.appendChild(date); rw.appendChild(imgw); rw.appendChild(nm); t.appendChild(rw);
+}
+grid.appendChild(t);
+});
+document.getElementById('legend').innerHTML = 'claimed = gold check &middot; available = orange frame &middot; locked = ' + LOCKSVG + ' chest';
+}
+async function doAdd() {
+var email = document.getElementById('email').value.trim();
+var password = document.getElementById('password').value;
+if (!email || !password) { setStatus('Enter email and password', 'err'); return; }
+try { tg.MainButton.showProgress(); } catch (e) {}
+var r = await api('/api/add', { email: email, password: password });
+try { tg.MainButton.hideProgress(); } catch (e) {}
+if (r.ok) { setStatus('Account ' + r.action, 'ok'); document.getElementById('email').value = ''; document.getElementById('password').value = ''; load(); }
+else { setStatus(r.error || 'Error', 'err'); }
+}
+load();
+</script>
+</body>
+</html>

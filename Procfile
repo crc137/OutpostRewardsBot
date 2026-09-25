@@ -1,0 +1,1 @@
+web: playwright install --with-deps chromium && python3 main.py
