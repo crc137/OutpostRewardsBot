@@ -172,6 +172,7 @@ grid.innerHTML = '<div class="empty">Loading...</div>';
 var d = await api('/api/calendar');
 grid.innerHTML = '';
 if (!d.ok) { grid.innerHTML = '<div class="empty">' + (d.error || 'Error') + '</div>'; return; }
+if (!d.days || !d.days.length) { grid.innerHTML = '<div class="empty">No event calendar right now</div>'; return; }
 var claimed = {};
 (d.claimed || []).forEach(function(n) { claimed[n] = 1; });
 var baseIdx = -1, baseDay = 0;

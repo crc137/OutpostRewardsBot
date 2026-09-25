@@ -4,15 +4,16 @@ import json
 import os
 import re
 import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlparse
 import requests as http_requests
 import database
 from notifier import _token
 
-EVENT_URL = 'https://outpost.dyinglightgame.com/events/dltb-1anniversary'
+EVENT_URL = os.environ.get('EVENT_URL', 'https://outpost.dyinglightgame.com/events/dltb-1anniversary')
 BASE = os.path.dirname(os.path.abspath(__file__))
-_cal_cache = {'ts': 0.0, 'days': []}
+_cal_cache = {'url': '', 'ts': 0.0, 'days': [], 'start': ''}
 try:
     PAGE = open(os.path.join(BASE, 'index.html'), encoding='utf-8').read()
 except OSError:
@@ -39,11 +40,12 @@ def _check_init(init_data: str):
     except Exception:
         return None
 
-def _fetch_calendar() -> list:
-    if time.time() - _cal_cache['ts'] < 120 and _cal_cache['days']:
-        return _cal_cache['days']
+def _fetch_calendar():
+    if _cal_cache['url'] == EVENT_URL and time.time() - _cal_cache['ts'] < 120 and _cal_cache['days']:
+        return _cal_cache['days'], _cal_cache['start']
     html = http_requests.get(EVENT_URL, timeout=30).text
     days = []
+    start = ''
     for ch in html.split('<div class="tile swiper-slide')[1:]:
         cls = ch.split('>', 1)[0]
         m_day = re.search(r'<div class="day">(\d+)</div>', ch)
@@ -67,13 +69,23 @@ def _fetch_calendar() -> list:
         if src.startswith('/'):
             src = 'https://outpost.dyinglightgame.com' + src
         days.append({'day': m_day.group(1), 'month': m_month.group(1), 'name': m_img.group(2) or 'Reward', 'img': src, 'state': state, 'gold': 'friday' in toks})
-    _cal_cache['ts'] = time.time()
-    _cal_cache['days'] = days
-    return days
+        if not start:
+            try:
+                mon = datetime.strptime(m_month.group(1), '%b').month
+                start = f'{datetime.now().year}-{mon:02d}-{int(m_day.group(1)):02d}T00:00:00'
+            except Exception:
+                pass
+    _cal_cache.update(url=EVENT_URL, ts=time.time(), days=days, start=start)
+    return days, start
 
-def _claimed_names(chat_id: str) -> list:
+def _claimed_names(chat_id: str, since: str = '') -> list:
+    q = "SELECT DISTINCT cl.reward FROM claim_log cl JOIN accounts a ON a.id = cl.account_id WHERE a.chat_id = ? AND cl.status = 'ok' AND cl.reward IS NOT NULL"
+    params = [str(chat_id)]
+    if since:
+        q += ' AND cl.claimed_at >= ?'
+        params.append(since)
     with database._conn() as conn:
-        rows = conn.execute("SELECT DISTINCT cl.reward FROM claim_log cl JOIN accounts a ON a.id = cl.account_id WHERE a.chat_id = ? AND cl.status = 'ok' AND cl.reward IS NOT NULL", (str(chat_id),)).fetchall()
+        rows = conn.execute(q, params).fetchall()
     out = []
     for r in rows:
         first = (r['reward'] or '').split(';')[0].strip().lower()
@@ -109,29 +121,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', ctype)
                 self.send_header('Content-Length', str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-            else:
-                self._json(404, {'ok': False})
-        elif path.startswith('/fonts/'):
-            safe = os.path.basename(path)
-            fp = os.path.join(BASE, 'fonts', safe)
-            if os.path.isfile(fp):
-                body = open(fp, 'rb').read()
-                if safe.endswith('.woff2'):
-                    ctype = 'font/woff2'
-                elif safe.endswith('.woff'):
-                    ctype = 'font/woff'
-                elif safe.endswith('.ttf'):
-                    ctype = 'font/ttf'
-                elif safe.endswith('.eot'):
-                    ctype = 'application/vnd.ms-fontobject'
-                else:
-                    ctype = 'application/octet-stream'
-                self.send_response(200)
-                self.send_header('Content-Type', ctype)
-                self.send_header('Content-Length', str(len(body)))
-                self.send_header('Cache-Control', 'max-age=86400')
                 self.end_headers()
                 self.wfile.write(body)
             else:
@@ -173,7 +162,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(404, {'ok': False, 'error': 'account not found'})
         elif path == '/api/calendar':
             try:
-                self._json(200, {'ok': True, 'days': _fetch_calendar(), 'claimed': _claimed_names(chat_id)})
+                days, start = _fetch_calendar()
+                self._json(200, {'ok': True, 'days': days, 'claimed': _claimed_names(chat_id, start)})
             except Exception as e:
                 self._json(502, {'ok': False, 'error': str(e)[:200]})
         else:
